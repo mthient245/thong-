@@ -2,7 +2,7 @@ name: Thong bao bai moi
 
 on:
   schedule:
-    - cron: "0 * * * *"   # mỗi giờ một lần (giờ UTC)
+       - cron: "*/5 * * * *"   # mỗi giờ một lần (giờ UTC)
   workflow_dispatch:       # cho phép bấm chạy thử bằng tay
 
 permissions:
