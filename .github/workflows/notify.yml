@@ -22,7 +22,7 @@ jobs:
         env:
           FEED_URL: ${{ secrets.FEED_URL }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          KEYWORDS: "rèn luyện,DRL,cộng điểm,hoạt động"
+          KEYWORDS: "rèn luyện,DRL,cộng điểm"
           ONCE: "1"
         run: python3 bot.py
 
