@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 FEED_URL = os.environ["FEED_URL"]                  # link RSS của page Facebook
 WEBHOOK_URL = os.environ["DISCORD_WEBHOOK_URL"]    # webhook của kênh Discord
 INTERVAL = int(os.environ.get("INTERVAL", "300"))  # giây giữa các lần kiểm tra
+ONCE = os.environ.get("ONCE") == "1"               # 1 = chạy một lần rồi thoát (dùng cho GitHub Actions)
 # Từ khóa lọc bài (để trống = báo mọi bài). Phân cách bằng dấu phẩy.
 KEYWORDS = [k.strip().lower() for k in os.environ.get(
     "KEYWORDS", "rèn luyện,điểm rèn luyện,DRL,hoạt động,cộng điểm").split(",") if k.strip()]
@@ -84,22 +85,19 @@ def notify(post):
 def load_seen():
     try:
         with open(STATE_FILE, encoding="utf-8") as f:
-            data = json.load(f)
-            return set(data) if data else None
-    except (FileNotFoundError, json.JSONDecodeError):
+            return set(json.load(f))
+    except FileNotFoundError:
         return None
 
 
 def save_seen(seen):
-    if not seen:
-        return
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(sorted(seen), f)
 
 
 def main():
     seen = load_seen()
-    first_run = seen is None
+    first_run = not seen  # chưa có dữ liệu cũ (file chưa có hoặc đang rỗng)
     seen = seen or set()
     while True:
         try:
@@ -107,12 +105,12 @@ def main():
             if first_run:
                 if not posts:
                     # feed còn trống: chờ có bài rồi mới khởi tạo, tránh báo nhầm bài cũ
-                    print("Feed chưa có bài nào, chờ lần kiểm tra sau...", flush=True)
+                    print("Feed chưa có bài nào, chờ lần kiểm tra sau...")
                 else:
                     # lần đầu chỉ ghi nhớ bài cũ, không spam
                     seen.update(p["id"] for p in posts)
                     first_run = False
-                    print(f"Khởi tạo: đã ghi nhớ {len(seen)} bài.", flush=True)
+                    print(f"Khởi tạo: đã ghi nhớ {len(seen)} bài.")
             else:
                 for p in reversed(posts):  # cũ -> mới
                     if p["id"] in seen:
@@ -120,10 +118,15 @@ def main():
                     seen.add(p["id"])
                     if matches(p):
                         notify(p)
-                        print("Đã báo:", p["link"], flush=True)
-            save_seen(seen)
+                        print("Đã báo:", p["link"])
+            if not first_run:
+                save_seen(seen)
         except Exception as e:  # không để bot chết vì lỗi mạng
-            print("Lỗi:", e, flush=True)
+            print("Lỗi:", e)
+            if ONCE:
+                raise SystemExit(1)  # để GitHub báo lỗi cho bạn
+        if ONCE:
+            break
         time.sleep(INTERVAL)
 
 
