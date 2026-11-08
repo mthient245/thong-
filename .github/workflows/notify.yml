@@ -1,0 +1,34 @@
+name: Thong bao bai moi
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # mỗi giờ một lần (giờ UTC)
+  workflow_dispatch:       # cho phép bấm chạy thử bằng tay
+
+permissions:
+  contents: write
+
+concurrency:
+  group: notify
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Chay bot
+        env:
+          FEED_URL: ${{ secrets.FEED_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          KEYWORDS: "rèn luyện,DRL,cộng điểm,hoạt động"
+          ONCE: "1"
+        run: python3 bot.py
+
+      - name: Luu danh sach bai da bao
+        run: |
+          git config user.name "bot"
+          git config user.email "bot@users.noreply.github.com"
+          if [ -f seen.json ]; then git add seen.json; fi
+          git diff --cached --quiet || (git commit -m "cap nhat seen.json" && git push)
